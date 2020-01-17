@@ -10,7 +10,7 @@ using System.Collections;
 using TMPro;
 using SocketIO;
 
-namespace Project.Networking
+namespace Project.Networking.Client
 {
 
     public class NetworkMessaging : MonoBehaviour

@@ -14,6 +14,7 @@ using Project.Player;
 using Project.Scriptable;
 using Project.Gameplay;
 using TMPro;
+using Project.Networking.Client;
 
 //-----------//
 //---CLASS---//

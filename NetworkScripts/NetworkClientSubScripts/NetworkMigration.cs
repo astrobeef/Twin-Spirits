@@ -4,7 +4,7 @@
 using UnityEngine;
 using System.Collections;
 
-namespace Project.Networking
+namespace Project.Networking.Client
 {
     public class NetworkMigration : MonoBehaviour
     {
