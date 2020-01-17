@@ -24,6 +24,11 @@ namespace Project.Networking {
     //Inherit 'SocketIOComponent' so we may use features from SocketIO
     public class NetworkClient : SocketIOComponent
     {
+        /*-------------*/
+        /*---Scirpts---*/
+        /*-------------*/
+        private NetworkMessaging mMessagingScript;
+
         /*---------------*/
         /*---Variables---*/
         /*---------------*/
@@ -41,25 +46,10 @@ namespace Project.Networking {
 
         public static string ClientID { get; private set; }     //The ID of our client.
 
-        [Header("UI")]
-
-        public TextMeshProUGUI accessTokenInput;                //The input field for the user's access token.
-        public TextMeshProUGUI messageInput;                    //The input field for the user's message.
-        public TextMeshProUGUI globalChatDisplay;               //The text field of the global chat.
-        public GameObject joinGameUI;                           //The gameobject which contains all 'join game' UI.
-        public GameObject pleaseWaitUI;                         //The gameobject which contains all 'please wait' UI.
-        public GameObject globalChatUI;                         //The gameobject which contains all 'global chat' UI.
-        public AccessToken mAccessToken;                        //The user's access token, to be filled by the uer.
-
-        private bool didSendFetch;                              //Have we attempted to check our access token?
-        private int mTimeToWait = 2;                            //How long to wait after a fetch.
-        [SerializeField]
-        private string mAccessToken_LastRequest;                //The previous token requested.  Used to compare to our new token.
-
-        public string[] mGlobalMessages;                        //The messages to be displayed to global chat.
-        public Message mMyMessage;                              //The message constructed by the client user.
-
         private Dictionary<string, NetworkIdentity> serverObjects;      //The network ID of the objects we have spawned.
+
+
+        public AccessToken mAccessToken;                        //The user's access token, to be filled by the uer.
 
         /*---------------------*/
         /*---Primary Methods---*/
@@ -76,23 +66,7 @@ namespace Project.Networking {
         public override void Update()
         {
             base.Update();
-
-            mMyMessage.message = messageInput.text.ToString();
-
-            if (accessTokenInput.text.Length > 2)
-            {
-                mAccessToken.accessToken = accessTokenInput.text.Trim(new char[] { '\r', '\n'});
-                //joinGameUI.SetActive(true);
-                if (!didSendFetch && mAccessToken_LastRequest != mAccessToken.accessToken)
-                {
-                    didSendFetch = true;
-                    FetchUserByToken();
-                }
-            }
-            else
-            {
-                joinGameUI.SetActive(false);
-            }
+            mMessagingScript.runCheck();
         }
 
         private void SetFrameRate()
@@ -126,8 +100,6 @@ namespace Project.Networking {
             {
                 //Extract Data from Event
                 string id = Event.data["id"].ToString().RemoveQuotes();     //Get our ID from the data passed in.
-
-                Emit("getMessages");        //Send call to get global messages.
 
                 /** SPAWN OUR PLAYER
                  * > Create the object as a child of our "networkContainer"
@@ -337,35 +309,7 @@ namespace Project.Networking {
             //When a user reference is found from MongoDB and sent back...
             On("sendUserFromToken", (Event) =>
             {
-                //Check if a user was found.
-                if(Event.data["username"] != null)
-                {
-                    //Extract Data from Event
-                    mAccessToken.username = Event.data["username"].str;
-
-                    //Allow player to join the game.
-                    joinGameUI.SetActive(true);
-                    joinGameUI.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = "Join now, " + mAccessToken.username;
-
-                    //Enable global chat.
-                    globalChatUI.SetActive(true);
-
-                    //Get the global chat messages.
-                    Emit("getMessages");
-                }
-                //ELSE, a user was NOT found
-                else
-                {
-                    Debug.LogWarning("Either we failed to fetch an existing user, or an error occured");
-
-                    //Tell the player to wait.
-                    pleaseWaitUI.SetActive(true);
-                    TextMeshProUGUI pleaseWaitUIText = pleaseWaitUI.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
-
-                    mTimeToWait *= 3;
-
-                    StartCoroutine(waitForNextFetch(mTimeToWait, pleaseWaitUIText));
-                }
+                mMessagingScript.OnSendUserFromToken(Event);
             });
 
             //When a new message is sent...
@@ -378,71 +322,24 @@ namespace Project.Networking {
             //When we retrieve messages from the server...
             On("returnMessages", (Event) =>
             {
-                /** GET AND DISPLAY MESSAGES
-                 * > Check if messages exist.
-                 * > Set a maximum of 5 messages, with the newest messages displayed.
-                 * > Set the text of our global chat.
-                 * */
-                if (Event.data["messages"] && Event.data["messages"].IsArray)
-                {
-                    globalChatDisplay.text = "";
-
-                    if(Event.data["messages"].Count > 5)
-                    {
-                        mGlobalMessages = new string[5];
-
-                        mGlobalMessages[0] = Event.data["messages"][Event.data["messages"].Count - 1].str;
-                        mGlobalMessages[1] = Event.data["messages"][Event.data["messages"].Count - 2].str;
-
-                        for(int i = 0; i < 5; i++)
-                        {
-                            mGlobalMessages[i] = Event.data["messages"][Event.data["messages"].Count - 5 + i].str;
-                            globalChatDisplay.text += mGlobalMessages[i] += "\n";
-                        }
-                    }
-                    else
-                    {
-                        mGlobalMessages = new string[Event.data["messages"].Count];
-
-                        for (int i = 0; i < mGlobalMessages.Length; i++)
-                        {
-                            mGlobalMessages[i] = Event.data["messages"][1].str;
-
-                            globalChatDisplay.text += mGlobalMessages[i] += "\n";
-                        }
-                    }
-                }
+                mMessagingScript.OnReturnMessages(Event);
             });
-        }
-
-        /** <summary> Waits for the specified duration to allow the user to send a new fetch.</summary>
-         * <param name="pTimeToWait">The amount of time to wait before allowing a new fetch</param>
-         * <param name="pleaseWaitUIText">The UI text component to be modified</param>
-         * */
-        private IEnumerator waitForNextFetch(int pTimeToWait, TextMeshProUGUI pleaseWaitUIText)
-        {
-            mAccessToken_LastRequest = mAccessToken.accessToken;
-            Debug.Log("Lsat request : " + mAccessToken_LastRequest);
-
-            for(int iTimeToWait = pTimeToWait; iTimeToWait > 0; iTimeToWait--)
-            {
-                pleaseWaitUIText.text = "Please wait " + (iTimeToWait - 1) + " seconds to send another Access Key";
-
-                yield return new WaitForSeconds(1);
-            }
-
-            didSendFetch = false;
-
-            pleaseWaitUI.SetActive(false);
         }
 
         /** <summary> Sets the initial references for this script</summary>
          * */
         private void SetInitialReferences()
         {
-            mAccessToken = new AccessToken();
+            //Scripts
+            if (GetComponent<NetworkMessaging>() != null)
+            {
+                mMessagingScript = GetComponent<NetworkMessaging>();
+                mMessagingScript.SetIntialReferences();
+            }
+            else Debug.LogError("Missing essential script");
 
-            mMyMessage = new Message();
+            //Classes
+            mAccessToken = new AccessToken();
 
             serverObjects = new Dictionary<string, NetworkIdentity>();
         }
@@ -453,25 +350,6 @@ namespace Project.Networking {
         public void AtemptToJoinLobby()
         {
             Emit("joinGame", new JSONObject(JsonUtility.ToJson(mAccessToken)));
-        }
-
-        /// <summary>
-        /// Attempt to get user based on access token.
-        /// </summary>
-        public void FetchUserByToken()
-        {
-            Emit("fetchUserByToken", new JSONObject(JsonUtility.ToJson(mAccessToken)));
-        }
-
-        /// <summary>
-        /// Send a message to the server.
-        /// </summary>
-        public void sendMessageToServer()
-        {
-            if(mMyMessage.message.Length > 0)
-            {
-                Emit("sendMessage", new JSONObject(JsonUtility.ToJson(mMyMessage)));
-            }
         }
 
     };
