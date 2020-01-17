@@ -1,7 +1,6 @@
 ﻿//---NETWORK CLIENT---//
 //---------This script handles the network communications from the client to the server.
 
-
 //-------------//
 //---IMPORTS---//
 //-------------//

@@ -1,4 +1,11 @@
-﻿using UnityEngine;
+﻿//---NETWORK MESSAGING---//
+//---------This script handles the network messaging events and related methods.
+
+
+//-------------//
+//---IMPORTS---//
+//-------------//
+using UnityEngine;
 using System.Collections;
 using TMPro;
 using SocketIO;
