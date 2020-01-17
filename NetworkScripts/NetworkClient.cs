@@ -163,47 +163,73 @@ namespace Project.Networking {
                     serverObjects.Remove(id);       //Remove from memory
                     Debug.Log("Player, " + id + ", disconnected");
                 }
-                else { Debug.LogError("Could not find referenced ID in our serverObjects"); };
+                else Debug.LogError("Could not find referenced ID in our serverObjects.  ID is false or we did not store it.");
             });
 
+            //When a position is updated...
             On("updatePosition", (Event) => {
+                //Extract Data from Event
                 string id = Event.data["id"].ToString().RemoveQuotes();
                 float x = Event.data["position"]["x"].f;
                 float y = Event.data["position"]["y"].f;
                 float z = Event.data["position"]["z"].f;
 
-                NetworkIdentity ni = serverObjects[id];
-                ni.transform.position = new Vector3(x, y, z);
+                /** FIND AND UPDATE OBJECT
+                 * > Using the ID, find the matching <NetworkIdentity> from our 'serverObjects'
+                 * > Update the position of the found NI using our passed Data.
+                 * */
+                if (serverObjects[id] != null)
+                {
+                    NetworkIdentity ni = serverObjects[id];
+                    ni.transform.position = new Vector3(x, y, z);
+                }
+                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
             });
 
+            //When a rotation is updated...
             On("updateRotation", (Event) =>
             {
+                //Extract Data from Event
                 string id = Event.data["id"].ToString().RemoveQuotes();
                 float tankRotation = Event.data["tankRotation"].f;
                 float barrelRotation = Event.data["barrelRotation"].f;
 
-                NetworkIdentity ni = serverObjects[id];
-                Debug.Log(ni.name);
-                Debug.Log(ni.transform.localEulerAngles);
-                Debug.Log("ni.transform.localEulerAngles");
-                ni.transform.localEulerAngles = new Vector3(0, tankRotation, 0);        //Sets the network identity data.
-                //ni.GetComponent<PlayerManager>().SetRotation(barrelRotation);
-                ni.GetComponent<PlayerManager>().getRotationScript().SetRotation(tankRotation);     //Sets the rotation of the actual player prefab.
+                /** FIND AND UPDATE OBJECT
+                 * > Using the ID, find the matching <NetworkIdentity> from our 'serverObjects'
+                 * > Update the rotation of the found NI using our passed Data.
+                 * > Update the rotation of the actual prefab using our passed Data.
+                 * */
+                if (serverObjects[id] != null)
+                {
+                    NetworkIdentity ni = serverObjects[id];
+                    ni.transform.localEulerAngles = new Vector3(0, tankRotation, 0);        //Sets the network identity data.
+                    ni.GetComponent<PlayerManager>().getRotationScript().SetRotation(tankRotation);     //Sets the rotation of the actual player prefab.
+                }
+                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
             });
 
+            //When the server spawns an object...
             On("serverSpawn", (Event) =>
             {
+                //Extract Data from Event
                 string name = Event.data["name"].str;
                 string id = Event.data["id"].ToString().RemoveQuotes();
                 float x = Event.data["position"]["x"].f;
                 float y = Event.data["position"]["y"].f;
                 float z = Event.data["position"]["z"].f;
 
+                /** SPAWN SERVER OBJECT
+                 * > Check if we have a reference to that object.
+                 * > Find the object we are spawning from our 'serverSpawnables' class.
+                 * > Set the position of the object to the server's passed position.
+                 * > Get the <NetworkIdentity> of the spawned object.
+                 * > Set reference on that NI for its ID and Socket Reference.
+                 * */
                 if (!serverObjects.ContainsKey(id))
                 {
-                    ServerObjectData sod = serverSpawnables.GetObjectByName(name);
-                    var spawnedObject = Instantiate(sod.Prefab, networkContainer);
-                    spawnedObject.transform.position = new Vector3(x, y, z);
+                    ServerObjectData sod = serverSpawnables.GetObjectByName(name);      //Find the server object by the name of the object.
+                    var spawnedObject = Instantiate(sod.Prefab, networkContainer);      //Instantiate the object's prefab as a child of our 'networkContainer'
+                    spawnedObject.transform.position = new Vector3(x, y, z);             
                     var ni = spawnedObject.GetComponent<NetworkIdentity>();
                     ni.SetControllerID(id);
                     ni.SetSocketReference(this);
@@ -211,19 +237,23 @@ namespace Project.Networking {
                     //If bullet apply direction as well
                     if(name == "Bullet")
                     {
+                        //Extract Data from Event
                         float directionX = Event.data["direction"]["x"].f;
                         float directionY = Event.data["direction"]["y"].f;
                         float directionZ = Event.data["direction"]["z"].f;
                         string activator = Event.data["activator"].ToString().RemoveQuotes();
                         float speed = Event.data["speed"].f;
 
+                        //Calculate and apply directional data.
                         float rot = Mathf.Atan2(directionX, directionZ) * Mathf.Rad2Deg;
                         Vector3 currentRotation = new Vector3(0, rot - 90, 0);
                         spawnedObject.transform.rotation = Quaternion.Euler(currentRotation);
 
+                        //Set parameters so that this bullet does not hit its creator.
                         WhoActivatedMe whoActivatedMe = spawnedObject.GetComponent<WhoActivatedMe>();
                         whoActivatedMe.SetActivator(activator);
 
+                        //Set the direction and speed of the projectile.
                         Projectile projectile = spawnedObject.GetComponent<Projectile>();
                         projectile.Direction = new Vector3(directionX, directionY, directionZ);
                         projectile.Speed = speed;
@@ -233,56 +263,102 @@ namespace Project.Networking {
                         Debug.Log("Not a bullet");
                     }
 
+                    //Add reference of this object to our 'serverObjects'
                     serverObjects.Add(id, ni);
                 }
             });
 
+            //When the server unspawns the object...
             On("serverUnspawn", (Event) =>
             {
+                //Extract Data from Event
                 string id = Event.data["id"].ToString().RemoveQuotes();
-                NetworkIdentity ni = serverObjects[id];
-                serverObjects.Remove(id);
-                DestroyImmediate(ni.gameObject);
+
+                /** FIND AND REMOVE SERVER OBJECT
+                 * > Find the NI matching the passed ID.
+                 * > Remove the ref.
+                 * > Destroy the object.
+                 * */
+                if (serverObjects[id] != null)
+                {
+                    NetworkIdentity ni = serverObjects[id];
+                    serverObjects.Remove(id);
+                    DestroyImmediate(ni.gameObject);
+                }
+                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
+
             });
 
+            //When any player dies...
             On("playerDied", (Event) =>
             {
+                //Extract Data from Event
                 string id = Event.data["id"].ToString().RemoveQuotes();
-                NetworkIdentity ni = serverObjects[id];
 
-                ni.gameObject.SetActive(false);
+                /** FIND AND DISABLE PLAYER
+                 * > Find NI matching the passed ID.
+                 * > Disable that gameobject.
+                 * */
+                if (serverObjects[id] != null)
+                {
+                    NetworkIdentity ni = serverObjects[id];
+
+                    ni.gameObject.SetActive(false);
+                }
+                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
             });
 
+            //When any player respawns...
             On("playerRespawn", (Event) =>
             {
+                //Extract Data from Event
                 string id = Event.data["id"].ToString().RemoveQuotes();
-                float x = Event.data["position"]["x"].f;
-                float y = Event.data["position"]["y"].f;
-                float z = Event.data["position"]["z"].f;
-                NetworkIdentity ni = serverObjects[id];
+                float x = Event.data["position"]["x"].f;        //Spawn position
+                float y = Event.data["position"]["y"].f;        //Spawn position
+                float z = Event.data["position"]["z"].f;        //Spawn position
 
-                ni.transform.position = new Vector3(x, y, z);
 
-                ni.gameObject.SetActive(true);
+                /** FIND AND 'SPAWN' PLAYER
+                 * > Find NI matching the passed ID.
+                 * > Set position to the passed spawn position.
+                 * > Enable that gameobject.
+                 * */
+                if (serverObjects[id] != null)
+                {
+                    NetworkIdentity ni = serverObjects[id];
+
+                    ni.transform.position = new Vector3(x, y, z);
+
+                    ni.gameObject.SetActive(true);
+                }
+                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
             });
 
+            //When a user reference is found from MongoDB and sent back...
             On("sendUserFromToken", (Event) =>
             {
+                //Check if a user was found.
                 if(Event.data["username"] != null)
                 {
+                    //Extract Data from Event
                     mAccessToken.username = Event.data["username"].str;
 
+                    //Allow player to join the game.
                     joinGameUI.SetActive(true);
                     joinGameUI.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = "Join now, " + mAccessToken.username;
 
+                    //Enable global chat.
                     globalChatUI.SetActive(true);
 
+                    //Get the global chat messages.
                     Emit("getMessages");
                 }
+                //ELSE, a user was NOT found
                 else
                 {
                     Debug.LogWarning("Either we failed to fetch an existing user, or an error occured");
 
+                    //Tell the player to wait.
                     pleaseWaitUI.SetActive(true);
                     TextMeshProUGUI pleaseWaitUIText = pleaseWaitUI.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
 
@@ -290,21 +366,23 @@ namespace Project.Networking {
 
                     StartCoroutine(waitForNextFetch(mTimeToWait, pleaseWaitUIText));
                 }
-
-                Debug.Log("We have recieved the event to get user from access token");
             });
 
+            //When a new message is sent...
             On("newMessage", (Event) =>
             {
-                Debug.Log("A user has sent a message");
-
+                //Get messages from server.
                 Emit("getMessages");
             });
 
+            //When we retrieve messages from the server...
             On("returnMessages", (Event) =>
             {
-                Debug.Log("We have gotten our messages from our MongoDB");
-
+                /** GET AND DISPLAY MESSAGES
+                 * > Check if messages exist.
+                 * > Set a maximum of 5 messages, with the newest messages displayed.
+                 * > Set the text of our global chat.
+                 * */
                 if (Event.data["messages"] && Event.data["messages"].IsArray)
                 {
                     globalChatDisplay.text = "";
@@ -336,10 +414,11 @@ namespace Project.Networking {
                     }
                 }
             });
-
-
         }
 
+        /// <summary>Class <c>Point</c> models a point in a two-dimensional
+        /// plane.</summary>
+        ///
         private IEnumerator waitForNextFetch(int pTimeToWait, TextMeshProUGUI pleaseWaitUIText)
         {
             mAccessToken_LastRequest = mAccessToken.accessToken;
@@ -351,7 +430,6 @@ namespace Project.Networking {
 
                 yield return new WaitForSeconds(1);
             }
-
 
             didSendFetch = false;
 
