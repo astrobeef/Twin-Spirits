@@ -408,7 +408,6 @@ namespace Project.Networking {
                         {
                             mGlobalMessages[i] = Event.data["messages"][1].str;
 
-
                             globalChatDisplay.text += mGlobalMessages[i] += "\n";
                         }
                     }
@@ -416,9 +415,10 @@ namespace Project.Networking {
             });
         }
 
-        /// <summary>Class <c>Point</c> models a point in a two-dimensional
-        /// plane.</summary>
-        ///
+        /** <summary> Waits for the specified duration to allow the user to send a new fetch.</summary>
+         * <param name="pTimeToWait">The amount of time to wait before allowing a new fetch</param>
+         * <param name="pleaseWaitUIText">The UI text component to be modified</param>
+         * */
         private IEnumerator waitForNextFetch(int pTimeToWait, TextMeshProUGUI pleaseWaitUIText)
         {
             mAccessToken_LastRequest = mAccessToken.accessToken;
@@ -436,6 +436,8 @@ namespace Project.Networking {
             pleaseWaitUI.SetActive(false);
         }
 
+        /** <summary> Sets the initial references for this script</summary>
+         * */
         private void SetInitialReferences()
         {
             mAccessToken = new AccessToken();
@@ -445,19 +447,26 @@ namespace Project.Networking {
             serverObjects = new Dictionary<string, NetworkIdentity>();
         }
 
+        /// <summary>
+        /// Attempt to join the lobby.
+        /// </summary>
         public void AtemptToJoinLobby()
         {
             Emit("joinGame", new JSONObject(JsonUtility.ToJson(mAccessToken)));
         }
 
+        /// <summary>
+        /// Attempt to get user based on access token.
+        /// </summary>
         public void FetchUserByToken()
         {
-            Debug.Log("Attempting to fetch Access Token");
-
             Emit("fetchUserByToken", new JSONObject(JsonUtility.ToJson(mAccessToken)));
         }
 
-        public void SendMessageToDB()
+        /// <summary>
+        /// Send a message to the server.
+        /// </summary>
+        public void sendMessageToServer()
         {
             if(mMyMessage.message.Length > 0)
             {
@@ -466,6 +475,10 @@ namespace Project.Networking {
         }
 
     };
+
+    //---------------------//
+    //---MODULAR CLASSES---//
+    //---------------------//
 
     [Serializable]
     public class Player
