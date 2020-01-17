@@ -139,7 +139,7 @@ namespace Project.Networking {
                 Debug.Log("ni.transform.localEulerAngles");
                 ni.transform.localEulerAngles = new Vector3(0, tankRotation, 0);        //Sets the network identity data.
                 //ni.GetComponent<PlayerManager>().SetRotation(barrelRotation);
-                ni.GetComponent<PlayerManager>().SetRotation(tankRotation);     //Sets the rotation of the actual player prefab.
+                ni.GetComponent<PlayerManager>().getRotationScript().SetRotation(tankRotation);     //Sets the rotation of the actual player prefab.
             });
 
             On("serverSpawn", (Event) =>
@@ -372,7 +372,6 @@ namespace Project.Networking {
     public class PlayerRotation
     {
         public float tankRotation;
-        public float barrelRotation;
     }
 
     [Serializable]

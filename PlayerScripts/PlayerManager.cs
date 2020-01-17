@@ -13,15 +13,9 @@ namespace Project.Player
 
         [Header("Data")]
         [SerializeField]
-        private float mSpeed = 2;
-        [SerializeField]
         private float mRotation = 60;
 
         [Header("Object References")]
-        [SerializeField]
-        private Transform barrelPivot;
-        [SerializeField]
-        private Transform bulletSpawnPoint;
         [SerializeField]
         private GameObject myCamerasObject;
         private Camera myCamera;
@@ -29,15 +23,12 @@ namespace Project.Player
         [Header("Class References")]
         [SerializeField]
         private NetworkIdentity mNetworkIdentity;
-
-        private float lastRotation;
-
-        //Shooting
-        private BulletData bulletData;
-        private Cooldown shootingCooldown;
-
-        //Rotation
-        private float mRotSpeed = 360.0f;
+        [SerializeField]
+        private Player_Movement mMovementScript;
+        [SerializeField]
+        private Player_Shooting mShootingScript;
+        [SerializeField]
+        private Player_Rotation mRotationScript;
 
         public void Start()
         {
@@ -46,14 +37,48 @@ namespace Project.Player
 
         private void SetInitialReferences()
         {
-            shootingCooldown = new Cooldown(1);
-            bulletData = new BulletData();
-            bulletData.position = new Position();
-            bulletData.direction = new Position();
-
             if (mNetworkIdentity.IsControlling())
             {
                 enableCameras();
+            }
+
+            if(mMovementScript == null)
+            {
+                if(GetComponent<Player_Movement>() != null)
+                {
+                    mMovementScript = GetComponent<Player_Movement>();
+                    mMovementScript.SetInitialReferences();
+                }
+                else
+                {
+                    Debug.LogError("Missing essential script");
+                }
+            }
+
+            if(mShootingScript == null)
+            {
+                if(GetComponent<Player_Shooting>() != null)
+                {
+                    mShootingScript = GetComponent<Player_Shooting>();
+                    mShootingScript.SetInitialReferences();
+                }
+                else
+                {
+                    Debug.LogError("Missing essential script");
+                }
+            }
+
+            if(mRotationScript == null)
+            {
+                if(GetComponent<Player_Rotation>() != null)
+                {
+                    mRotationScript = GetComponent<Player_Rotation>();
+                    mRotationScript.SetInitialReferences();
+                }
+                else
+                {
+                    Debug.LogError("Missing essential script");
+                }
             }
         }
 
@@ -68,68 +93,29 @@ namespace Project.Player
             }
         }
 
-        public float GetLastRotation()
-        {
-            return lastRotation;
-        }
-
-        public void SetRotation(float Value)
-        {
-            transform.rotation = Quaternion.Euler(0, Value, 0);
-        }
-
         private void checkMovement()
         {
-            float horizontal = Input.GetAxis("Horizontal");
-            float vertical = Input.GetAxis("Vertical");
-
-            Vector3 input = new Vector3(horizontal, 0, vertical);
-            Vector3 movementForward = transform.forward * vertical;
-            Vector3 movementSide = transform.right * horizontal;
-
-            transform.position += (movementSide + movementForward) * mSpeed * Time.deltaTime;
-
-            //transform.position += transform.forward * mSpeed * Time.deltaTime;
+            mMovementScript.runCheck();
         }
 
-        private void checkAiming()
-        {
-            Vector3 mousePosition = myCamera.ScreenToWorldPoint(Input.mousePosition);
-            Vector3 dif = transform.position - mousePosition;
-            dif.Normalize();
-            float rot = Mathf.Atan2(dif.x, dif.z) * Mathf.Rad2Deg;
+        //private void checkAiming()
+        //{
+        //    Vector3 mousePosition = myCamera.ScreenToWorldPoint(Input.mousePosition);
+        //    Vector3 dif = transform.position - mousePosition;
+        //    dif.Normalize();
+        //    float rot = Mathf.Atan2(dif.x, dif.z) * Mathf.Rad2Deg;
 
-            lastRotation = rot;
-
-            barrelPivot.rotation = Quaternion.Euler(0, rot + BARREL_PIVOT_OFFSET, 0);
-        }
+        //    lastRotation = rot;
+        //}
 
         private void checkRotation()
         {
-            transform.Rotate(new Vector3(0, Input.GetAxis("Mouse X"), 0) * Time.deltaTime * mRotSpeed);
+            mRotationScript.runCheck();
         }
 
         private void checkShooting()
         {
-            shootingCooldown.CooldownUpdate();
-
-            if(Input.GetMouseButton(0) && !shootingCooldown.IsOnCooldown())
-            {
-                shootingCooldown.StartCooldown();
-
-                //Define Bullet
-                bulletData.activator = NetworkClient.ClientID;
-                bulletData.position.x = bulletSpawnPoint.position.x.TwoDecimals();
-                bulletData.position.y = bulletSpawnPoint.position.y.TwoDecimals();
-                bulletData.position.z = bulletSpawnPoint.position.z.TwoDecimals();
-
-                bulletData.direction.x = bulletSpawnPoint.up.x;
-                bulletData.direction.y = bulletSpawnPoint.up.y;
-                bulletData.direction.z = bulletSpawnPoint.up.z;
-
-                //Send Bullet
-                mNetworkIdentity.GetSocket().Emit("fireBullet", new JSONObject(JsonUtility.ToJson(bulletData)));
-            }
+            mShootingScript.runCheck();
         }
 
         private void enableCameras()
@@ -144,6 +130,20 @@ namespace Project.Player
                 myCamera.transform.GetComponent<AudioListener>().enabled = true;
             }
 
+        }
+
+        /*--------------------------*/
+        /*-----ACCESSOR METHODS-----*/
+        /*--------------------------*/
+
+        public NetworkIdentity getNetworkIdentity()
+        {
+            return mNetworkIdentity;
+        }
+
+        public Player_Rotation getRotationScript()
+        {
+            return mRotationScript;
         }
     }
 

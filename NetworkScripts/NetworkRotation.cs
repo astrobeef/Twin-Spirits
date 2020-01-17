@@ -15,9 +15,6 @@ namespace Project.Networking
         [SerializeField]
         [GreyOut]
         private float oldTankRotation;
-        [SerializeField]
-        [GreyOut]
-        private float oldBarrelRotation;
 
         [Header("Class References")]
         [SerializeField]
@@ -35,7 +32,6 @@ namespace Project.Networking
 
             player = new PlayerRotation();
             player.tankRotation = 0;
-            player.barrelRotation = 0;
 
             if (!networkIdentity.IsControlling())
             {
@@ -48,10 +44,9 @@ namespace Project.Networking
         {
             if (networkIdentity.IsControlling())
             {
-                if (oldTankRotation != transform.localEulerAngles.y || oldBarrelRotation != playerManager.GetLastRotation())
+                if (oldTankRotation != transform.localEulerAngles.y)
                 {
                     oldTankRotation = transform.localEulerAngles.y;
-                    oldBarrelRotation = playerManager.GetLastRotation();
 
                     stillCounter = 0;
                     sendData();
@@ -72,7 +67,6 @@ namespace Project.Networking
         private void sendData()
         {
             player.tankRotation = transform.localEulerAngles.y.TwoDecimals();
-            player.barrelRotation = playerManager.GetLastRotation().TwoDecimals();
 
 
             networkIdentity.GetSocket().Emit("updateRotation", new JSONObject(JsonUtility.ToJson(player)));
