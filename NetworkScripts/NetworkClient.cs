@@ -1,4 +1,11 @@
-﻿using System.Collections;
+﻿//---NETWORK CLIENT---//
+//---------This script handles the network communications from the client to the server.
+
+
+//-------------//
+//---IMPORTS---//
+//-------------//
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using SocketIO;
@@ -9,38 +16,55 @@ using Project.Scriptable;
 using Project.Gameplay;
 using TMPro;
 
+//-----------//
+//---CLASS---//
+//-----------//
+
 namespace Project.Networking {
+    //Inherit 'SocketIOComponent' so we may use features from SocketIO
     public class NetworkClient : SocketIOComponent
     {
-        public const float SERVER_UPDATE_TIME = 10; //10% of the server update (currently 100 ms)
+        /*---------------*/
+        /*---Variables---*/
+        /*---------------*/
+
+        public const float SERVER_UPDATE_TIME = 10;     //10% of the server update (currently 100 ms)
 
         [Header("Network Client")]
+
         [SerializeField]
-        private Transform networkContainer;
+        private Transform networkContainer;                     //The parent transform of our network instantiations. (Spawning a player, bullet, etc.)
         [SerializeField]
-        private GameObject playerPrefab;
+        private GameObject playerPrefab;                        //The prefab of our player to be instantiated.
         [SerializeField]
-        private ServerObjects serverSpawnables;
+        private ServerObjects serverSpawnables;                 //Objects spawned by the server which are always identical.  (Bullets, but not players).
 
-        public static string ClientID { get; private set; }
+        public static string ClientID { get; private set; }     //The ID of our client.
 
-        public TextMeshProUGUI usernameInput;
-        public TextMeshProUGUI messageInput;
-        public TextMeshProUGUI globalChatDisplay;
-        public GameObject joinGameUI;
-        public GameObject pleaseWaitUI;
-        public GameObject globalChatUI;
-        public AccessToken mAccessToken;
+        [Header("UI")]
 
-        private bool didSendFetch;
-        private int mTimeToWait = 2;
+        public TextMeshProUGUI accessTokenInput;                //The input field for the user's access token.
+        public TextMeshProUGUI messageInput;                    //The input field for the user's message.
+        public TextMeshProUGUI globalChatDisplay;               //The text field of the global chat.
+        public GameObject joinGameUI;                           //The gameobject which contains all 'join game' UI.
+        public GameObject pleaseWaitUI;                         //The gameobject which contains all 'please wait' UI.
+        public GameObject globalChatUI;                         //The gameobject which contains all 'global chat' UI.
+        public AccessToken mAccessToken;                        //The user's access token, to be filled by the uer.
+
+        private bool didSendFetch;                              //Have we attempted to check our access token?
+        private int mTimeToWait = 2;                            //How long to wait after a fetch.
         [SerializeField]
-        private string mAccessToken_LastRequest;
+        private string mAccessToken_LastRequest;                //The previous token requested.  Used to compare to our new token.
 
-        public string[] mGlobalMessages;
-        public Message mMyMessage;
+        public string[] mGlobalMessages;                        //The messages to be displayed to global chat.
+        public Message mMyMessage;                              //The message constructed by the client user.
 
-        private Dictionary<string, NetworkIdentity> serverObjects;
+        private Dictionary<string, NetworkIdentity> serverObjects;      //The network ID of the objects we have spawned.
+
+        /*---------------------*/
+        /*---Primary Methods---*/
+        /*---------------------*/
+
         public override void Start()
         {
             SetInitialReferences();
@@ -55,9 +79,9 @@ namespace Project.Networking {
 
             mMyMessage.message = messageInput.text.ToString();
 
-            if (usernameInput.text.Length > 2)
+            if (accessTokenInput.text.Length > 2)
             {
-                mAccessToken.accessToken = usernameInput.text.Trim(new char[] { '\r', '\n'});
+                mAccessToken.accessToken = accessTokenInput.text.Trim(new char[] { '\r', '\n'});
                 //joinGameUI.SetActive(true);
                 if (!didSendFetch && mAccessToken_LastRequest != mAccessToken.accessToken)
                 {
@@ -77,44 +101,69 @@ namespace Project.Networking {
             Application.targetFrameRate = 30;
         }
 
+        /*-------------------*/
+        /*---Event Methods---*/
+        /*-------------------*/
+
+        /** Sets up the events for this client.  Ran on Start(). */
         private void SetupEvents()
         {
+            //When open, log connection.
             On("open", (Event) =>
             {
                 Debug.Log("Connection made to the server");
             });
 
+            //When we have registered, set our client ID from the data passed in.
             On("register", (Event) =>
             {
                 ClientID = Event.data["id"].ToString().RemoveQuotes();
                 Debug.LogFormat("Our Client's ID ({0})", ClientID);
             });
 
+            //When we spawn into the lobby...
             On("spawn", (Event) =>
             {
+                //Extract Data from Event
+                string id = Event.data["id"].ToString().RemoveQuotes();     //Get our ID from the data passed in.
 
-                Emit("getMessages");
+                Emit("getMessages");        //Send call to get global messages.
 
-                Debug.Log("Player spawned");
-                string id = Event.data["id"].ToString().RemoveQuotes();
-
+                /** SPAWN OUR PLAYER
+                 * > Create the object as a child of our "networkContainer"
+                 * > Set the name of our player.
+                 * > Get the <NetworkIdentity> component off of the instantiated player, 'go'.
+                 * > Set the controller ID and socket reference of the NetworkIdentity on the player.
+                 * */
                 GameObject go = Instantiate(playerPrefab, networkContainer);
-                go.name = string.Format("Player ({0})", mAccessToken.username);
+                go.name = string.Format("Player ({0})", mAccessToken.username);     
                 NetworkIdentity ni = go.GetComponent<NetworkIdentity>();
                 ni.SetControllerID(id);
                 ni.SetSocketReference(this);
 
+                //Store reference to this instantiated object on this 'NetworkClient'.
                 serverObjects.Add(id, ni);
             });
 
+            //When something disconnects from the lobby...
             On("disconnected", (Event) =>
             {
-                string id = Event.data["id"].ToString().RemoveQuotes();
+                //Extract Data from Event
+                string id = Event.data["id"].ToString().RemoveQuotes();     //Get our ID from the data passed in.
 
-                GameObject go = serverObjects[id].gameObject;
-                Destroy(go);        //Remove from game
-                serverObjects.Remove(id);       //Remove from memory
-                Debug.Log("Player, " + id + ", disconnected");
+                /** FIND AND DESTROY PLAYER
+                 * > Using the ID, find the match in our Dictionary of 'serverObjects'.
+                 * > Destroy the found gameObject.
+                 * > Remove reference to the gameObject from our Dictionary.
+                 * */
+                if(serverObjects[id] != null)
+                {
+                    GameObject go = serverObjects[id].gameObject;
+                    Destroy(go);        //Remove from game
+                    serverObjects.Remove(id);       //Remove from memory
+                    Debug.Log("Player, " + id + ", disconnected");
+                }
+                else { Debug.LogError("Could not find referenced ID in our serverObjects"); };
             });
 
             On("updatePosition", (Event) => {
