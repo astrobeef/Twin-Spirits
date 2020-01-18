@@ -28,6 +28,7 @@ namespace Project.Networking {
         /*---Scirpts---*/
         /*-------------*/
         private NetworkMessaging mMessagingScript;
+        private NetworkMigration mMigrationScript;
 
         /*---------------*/
         /*---Variables---*/
@@ -39,12 +40,13 @@ namespace Project.Networking {
 
         [SerializeField]
         private Transform networkContainer;                     //The parent transform of our network instantiations. (Spawning a player, bullet, etc.)
-        [SerializeField]
-        private GameObject playerPrefab;                        //The prefab of our player to be instantiated.
+
         [SerializeField]
         private ServerObjects serverSpawnables;                 //Objects spawned by the server which are always identical.  (Bullets, but not players).
 
         public static string ClientID { get; private set; }     //The ID of our client.
+
+        
 
         private Dictionary<string, NetworkIdentity> serverObjects;      //The network ID of the objects we have spawned.
 
@@ -85,57 +87,25 @@ namespace Project.Networking {
             //When open, log connection.
             On("open", (Event) =>
             {
-                Debug.Log("Connection made to the server");
+                mMigrationScript.OnOpen(Event);
             });
 
             //When we have registered, set our client ID from the data passed in.
             On("register", (Event) =>
             {
-                ClientID = Event.data["id"].ToString().RemoveQuotes();
-                Debug.LogFormat("Our Client's ID ({0})", ClientID);
+                mMigrationScript.OnRegister(Event);
             });
 
             //When we spawn into the lobby...
             On("spawn", (Event) =>
             {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();     //Get our ID from the data passed in.
-
-                /** SPAWN OUR PLAYER
-                 * > Create the object as a child of our "networkContainer"
-                 * > Set the name of our player.
-                 * > Get the <NetworkIdentity> component off of the instantiated player, 'go'.
-                 * > Set the controller ID and socket reference of the NetworkIdentity on the player.
-                 * */
-                GameObject go = Instantiate(playerPrefab, networkContainer);
-                go.name = string.Format("Player ({0})", mAccessToken.username);     
-                NetworkIdentity ni = go.GetComponent<NetworkIdentity>();
-                ni.SetControllerID(id);
-                ni.SetSocketReference(this);
-
-                //Store reference to this instantiated object on this 'NetworkClient'.
-                serverObjects.Add(id, ni);
+                mMigrationScript.OnSpawn(Event, this);
             });
 
             //When something disconnects from the lobby...
             On("disconnected", (Event) =>
             {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();     //Get our ID from the data passed in.
-
-                /** FIND AND DESTROY PLAYER
-                 * > Using the ID, find the match in our Dictionary of 'serverObjects'.
-                 * > Destroy the found gameObject.
-                 * > Remove reference to the gameObject from our Dictionary.
-                 * */
-                if(serverObjects[id] != null)
-                {
-                    GameObject go = serverObjects[id].gameObject;
-                    Destroy(go);        //Remove from game
-                    serverObjects.Remove(id);       //Remove from memory
-                    Debug.Log("Player, " + id + ", disconnected");
-                }
-                else Debug.LogError("Could not find referenced ID in our serverObjects.  ID is false or we did not store it.");
+                mMigrationScript.OnDisconnected(Event);
             });
 
             //When a position is updated...
@@ -338,6 +308,12 @@ namespace Project.Networking {
             }
             else Debug.LogError("Missing essential script");
 
+            if(GetComponent<NetworkMigration>() != null)
+            {
+                mMigrationScript = GetComponent<NetworkMigration>();
+                mMigrationScript.SetInitialReferences();
+            }
+
             //Classes
             mAccessToken = new AccessToken();
 
@@ -350,6 +326,30 @@ namespace Project.Networking {
         public void AtemptToJoinLobby()
         {
             Emit("joinGame", new JSONObject(JsonUtility.ToJson(mAccessToken)));
+        }
+
+        //----------------------//
+        //---ACCESSOR METHODS---//
+        //----------------------//
+
+        public string getClientID()
+        {
+            return ClientID;
+        }
+
+        public void setClientID(string ID)
+        {
+            ClientID = ID;
+        }
+
+        public Dictionary<string, NetworkIdentity> getServerObjects()
+        {
+            return serverObjects;
+        }
+
+        public Transform getNetworkContainer()
+        {
+            return networkContainer;
         }
 
     };
@@ -406,5 +406,6 @@ namespace Project.Networking {
     {
         public string id;
     }
+
 
 };

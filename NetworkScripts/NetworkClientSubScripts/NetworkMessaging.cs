@@ -34,26 +34,6 @@ namespace Project.Networking.Client
         public string[] mGlobalMessages;                        //The messages to be displayed to global chat.
         public Message mMyMessage;                              //The message constructed by the client user.
 
-        public void runCheck()
-        {
-
-            mMyMessage.message = messageInput.text.ToString();
-
-            if (accessTokenInput.text.Length > 2)
-            {
-                mMaster.mAccessToken.accessToken = accessTokenInput.text.Trim(new char[] { '\r', '\n' });
-                if (!didSendFetch && mAccessToken_LastRequest != mMaster.mAccessToken.accessToken)
-                {
-                    didSendFetch = true;
-                    EmitFetchForUser();
-                }
-            }
-            else
-            {
-                joinGameUI.SetActive(false);
-            }
-        }
-
         /** <summary> Sets the initial references for this script</summary>
          * */
         public void SetIntialReferences()
@@ -75,7 +55,7 @@ namespace Project.Networking.Client
             }
             else Debug.LogError("Could not find userMessage Input");
 
-            if(GameObject.Find("Global Chat - Text") != null)
+            if (GameObject.Find("Global Chat - Text") != null)
             {
                 globalChatDisplay = GameObject.Find("Global Chat - Text").GetComponent<TextMeshProUGUI>();
             }
@@ -103,6 +83,26 @@ namespace Project.Networking.Client
             }
             else Debug.LogError("Could not find chat panel");
 
+        }
+
+        public void runCheck()
+        {
+
+            mMyMessage.message = messageInput.text.ToString();
+
+            if (accessTokenInput.text.Length > 2)
+            {
+                mMaster.mAccessToken.accessToken = accessTokenInput.text.Trim(new char[] { '\r', '\n' });
+                if (!didSendFetch && mAccessToken_LastRequest != mMaster.mAccessToken.accessToken)
+                {
+                    didSendFetch = true;
+                    EmitFetchForUser();
+                }
+            }
+            else
+            {
+                joinGameUI.SetActive(false);
+            }
         }
 
         //-------------------------//
