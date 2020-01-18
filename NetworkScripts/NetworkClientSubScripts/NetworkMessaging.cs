@@ -15,24 +15,22 @@ namespace Project.Networking.Client
 
     public class NetworkMessaging : MonoBehaviour
     {
-        [SerializeField]
         private NetworkClient mMaster;
 
         [Header("UI")]
-        public TextMeshProUGUI accessTokenInput;                //The input field for the user's access token.
-        public TextMeshProUGUI messageInput;                    //The input field for the user's message.
-        public TextMeshProUGUI globalChatDisplay;               //The text field of the global chat.
-        public GameObject joinGameUI;                           //The gameobject which contains all 'join game' UI.
-        public GameObject pleaseWaitUI;                         //The gameobject which contains all 'please wait' UI.
-        public GameObject globalChatUI;                         //The gameobject which contains all 'global chat' UI.
+        private TextMeshProUGUI accessTokenInput;                //The input field for the user's access token.
+        private TextMeshProUGUI messageInput;                    //The input field for the user's message.
+        private TextMeshProUGUI globalChatDisplay;               //The text field of the global chat.
+        private GameObject joinGameUI;                           //The gameobject which contains all 'join game' UI.
+        private GameObject pleaseWaitUI;                         //The gameobject which contains all 'please wait' UI.
+        private GameObject globalChatUI;                         //The gameobject which contains all 'global chat' UI.
 
         private bool didSendFetch;                              //Have we attempted to check our access token?
         private int mTimeToWait = 2;                            //How long to wait after a fetch.
-        [SerializeField]
         private string mAccessToken_LastRequest;                //The previous token requested.  Used to compare to our new token.
 
-        public string[] mGlobalMessages;                        //The messages to be displayed to global chat.
-        public Message mMyMessage;                              //The message constructed by the client user.
+        private string[] mGlobalMessages;                        //The messages to be displayed to global chat.
+        private Message mMyMessage;                              //The message constructed by the client user.
 
         /** <summary> Sets the initial references for this script</summary>
          * */
@@ -85,6 +83,8 @@ namespace Project.Networking.Client
 
         }
 
+        /** <summary> Runs any checks for the messaging.  Should be run on update.</summary>
+         * */
         public void runCheck()
         {
 
@@ -146,6 +146,9 @@ namespace Project.Networking.Client
             }
         }
 
+        /** <summary>Gets the messages from the server and displays them</summary>
+         * <param name="pEvent">The socket event fired from the server</param>
+         * */
         public void OnReturnMessages(SocketIOEvent pEvent)
         {
             /** GET AND DISPLAY MESSAGES

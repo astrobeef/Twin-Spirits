@@ -10,7 +10,6 @@ using UnityEngine;
 using SocketIO;
 using System;
 using Project.Utility;
-using Project.Player;
 using Project.Scriptable;
 using Project.Gameplay;
 using TMPro;
@@ -29,6 +28,8 @@ namespace Project.Networking {
         /*-------------*/
         private NetworkMessaging mMessagingScript;
         private NetworkMigration mMigrationScript;
+        private NetworkUpdates mUpdatesScript;
+        private NetworkServerSpawning mServerSpawningScript;
 
         /*---------------*/
         /*---Variables---*/
@@ -41,8 +42,6 @@ namespace Project.Networking {
         [SerializeField]
         private Transform networkContainer;                     //The parent transform of our network instantiations. (Spawning a player, bullet, etc.)
 
-        [SerializeField]
-        private ServerObjects serverSpawnables;                 //Objects spawned by the server which are always identical.  (Bullets, but not players).
 
         public static string ClientID { get; private set; }     //The ID of our client.
 
@@ -110,170 +109,37 @@ namespace Project.Networking {
 
             //When a position is updated...
             On("updatePosition", (Event) => {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();
-                float x = Event.data["position"]["x"].f;
-                float y = Event.data["position"]["y"].f;
-                float z = Event.data["position"]["z"].f;
-
-                /** FIND AND UPDATE OBJECT
-                 * > Using the ID, find the matching <NetworkIdentity> from our 'serverObjects'
-                 * > Update the position of the found NI using our passed Data.
-                 * */
-                if (serverObjects[id] != null)
-                {
-                    NetworkIdentity ni = serverObjects[id];
-                    ni.transform.position = new Vector3(x, y, z);
-                }
-                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
+                mUpdatesScript.OnUpdatePosition(Event);
             });
 
             //When a rotation is updated...
             On("updateRotation", (Event) =>
             {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();
-                float tankRotation = Event.data["tankRotation"].f;
-                float barrelRotation = Event.data["barrelRotation"].f;
-
-                /** FIND AND UPDATE OBJECT
-                 * > Using the ID, find the matching <NetworkIdentity> from our 'serverObjects'
-                 * > Update the rotation of the found NI using our passed Data.
-                 * > Update the rotation of the actual prefab using our passed Data.
-                 * */
-                if (serverObjects[id] != null)
-                {
-                    NetworkIdentity ni = serverObjects[id];
-                    ni.transform.localEulerAngles = new Vector3(0, tankRotation, 0);        //Sets the network identity data.
-                    ni.GetComponent<PlayerManager>().getRotationScript().SetRotation(tankRotation);     //Sets the rotation of the actual player prefab.
-                }
-                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
+                mUpdatesScript.OnUpdateRotation(Event);
             });
 
             //When the server spawns an object...
             On("serverSpawn", (Event) =>
             {
-                //Extract Data from Event
-                string name = Event.data["name"].str;
-                string id = Event.data["id"].ToString().RemoveQuotes();
-                float x = Event.data["position"]["x"].f;
-                float y = Event.data["position"]["y"].f;
-                float z = Event.data["position"]["z"].f;
-
-                /** SPAWN SERVER OBJECT
-                 * > Check if we have a reference to that object.
-                 * > Find the object we are spawning from our 'serverSpawnables' class.
-                 * > Set the position of the object to the server's passed position.
-                 * > Get the <NetworkIdentity> of the spawned object.
-                 * > Set reference on that NI for its ID and Socket Reference.
-                 * */
-                if (!serverObjects.ContainsKey(id))
-                {
-                    ServerObjectData sod = serverSpawnables.GetObjectByName(name);      //Find the server object by the name of the object.
-                    var spawnedObject = Instantiate(sod.Prefab, networkContainer);      //Instantiate the object's prefab as a child of our 'networkContainer'
-                    spawnedObject.transform.position = new Vector3(x, y, z);             
-                    var ni = spawnedObject.GetComponent<NetworkIdentity>();
-                    ni.SetControllerID(id);
-                    ni.SetSocketReference(this);
-
-                    //If bullet apply direction as well
-                    if(name == "Bullet")
-                    {
-                        //Extract Data from Event
-                        float directionX = Event.data["direction"]["x"].f;
-                        float directionY = Event.data["direction"]["y"].f;
-                        float directionZ = Event.data["direction"]["z"].f;
-                        string activator = Event.data["activator"].ToString().RemoveQuotes();
-                        float speed = Event.data["speed"].f;
-
-                        //Calculate and apply directional data.
-                        float rot = Mathf.Atan2(directionX, directionZ) * Mathf.Rad2Deg;
-                        Vector3 currentRotation = new Vector3(0, rot - 90, 0);
-                        spawnedObject.transform.rotation = Quaternion.Euler(currentRotation);
-
-                        //Set parameters so that this bullet does not hit its creator.
-                        WhoActivatedMe whoActivatedMe = spawnedObject.GetComponent<WhoActivatedMe>();
-                        whoActivatedMe.SetActivator(activator);
-
-                        //Set the direction and speed of the projectile.
-                        Projectile projectile = spawnedObject.GetComponent<Projectile>();
-                        projectile.Direction = new Vector3(directionX, directionY, directionZ);
-                        projectile.Speed = speed;
-                    }
-                    else
-                    {
-                        Debug.Log("Not a bullet");
-                    }
-
-                    //Add reference of this object to our 'serverObjects'
-                    serverObjects.Add(id, ni);
-                }
+                mServerSpawningScript.OnServerSpawn(Event, this);
             });
 
             //When the server unspawns the object...
             On("serverUnspawn", (Event) =>
             {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();
-
-                /** FIND AND REMOVE SERVER OBJECT
-                 * > Find the NI matching the passed ID.
-                 * > Remove the ref.
-                 * > Destroy the object.
-                 * */
-                if (serverObjects[id] != null)
-                {
-                    NetworkIdentity ni = serverObjects[id];
-                    serverObjects.Remove(id);
-                    DestroyImmediate(ni.gameObject);
-                }
-                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
-
+                mServerSpawningScript.OnServerUnspawn(Event);
             });
 
             //When any player dies...
             On("playerDied", (Event) =>
             {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();
-
-                /** FIND AND DISABLE PLAYER
-                 * > Find NI matching the passed ID.
-                 * > Disable that gameobject.
-                 * */
-                if (serverObjects[id] != null)
-                {
-                    NetworkIdentity ni = serverObjects[id];
-
-                    ni.gameObject.SetActive(false);
-                }
-                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
+                mUpdatesScript.OnPlayerDied(Event);
             });
 
             //When any player respawns...
             On("playerRespawn", (Event) =>
             {
-                //Extract Data from Event
-                string id = Event.data["id"].ToString().RemoveQuotes();
-                float x = Event.data["position"]["x"].f;        //Spawn position
-                float y = Event.data["position"]["y"].f;        //Spawn position
-                float z = Event.data["position"]["z"].f;        //Spawn position
-
-
-                /** FIND AND 'SPAWN' PLAYER
-                 * > Find NI matching the passed ID.
-                 * > Set position to the passed spawn position.
-                 * > Enable that gameobject.
-                 * */
-                if (serverObjects[id] != null)
-                {
-                    NetworkIdentity ni = serverObjects[id];
-
-                    ni.transform.position = new Vector3(x, y, z);
-
-                    ni.gameObject.SetActive(true);
-                }
-                else Debug.LogError("Could not find reference of the NI in our serverObjects.  ID is false or we did not store it.");
+                mUpdatesScript.OnPlayerRespawn(Event);
             });
 
             //When a user reference is found from MongoDB and sent back...
@@ -313,6 +179,21 @@ namespace Project.Networking {
                 mMigrationScript = GetComponent<NetworkMigration>();
                 mMigrationScript.SetInitialReferences();
             }
+            else Debug.LogError("Missing essential script");
+
+            if (GetComponent<NetworkUpdates>() != null)
+            {
+                mUpdatesScript = GetComponent<NetworkUpdates>();
+                mUpdatesScript.SetInitialReferences();
+            }
+            else Debug.LogError("Missing essential script");
+
+            if (GetComponent<NetworkServerSpawning>() != null)
+            {
+                mServerSpawningScript = GetComponent<NetworkServerSpawning>();
+                mServerSpawningScript.SetInitialReferences();
+            }
+            else Debug.LogError("Missing essential script");
 
             //Classes
             mAccessToken = new AccessToken();

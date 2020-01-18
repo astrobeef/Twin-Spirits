@@ -1,6 +1,9 @@
 ﻿//---NETWORK MIGRATION---//
 //---------Handles connections coming in and out, as well as spawning/unspawning.
 
+//-------------//
+//---IMPORTS---//
+//-------------//
 using UnityEngine;
 using System.Collections;
 using SocketIO;
@@ -10,7 +13,6 @@ namespace Project.Networking.Client
 {
     public class NetworkMigration : MonoBehaviour
     {
-        [SerializeField]
         private NetworkClient mMaster;
 
         [SerializeField]
