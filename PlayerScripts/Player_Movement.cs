@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace Project.Player
 {
-
     public class Player_Movement : MonoBehaviour
     {
         [SerializeField]

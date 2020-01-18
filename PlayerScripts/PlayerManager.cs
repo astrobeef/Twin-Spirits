@@ -1,4 +1,5 @@
 ﻿using Project.Networking;
+using Project.Scriptable;
 using Project.Utility;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,6 +11,11 @@ namespace Project.Player
     public class PlayerManager : MonoBehaviour
     {
         const float BARREL_PIVOT_OFFSET = 90.0f;
+
+        private NetworkClient ourClient;
+        public bool ourClientIsConnected = false;
+        public Transform OfflineContainer;
+        public ServerObjects OfflineSpawnables;
 
         [Header("Data")]
         [SerializeField]
@@ -32,62 +38,77 @@ namespace Project.Player
 
         public void Start()
         {
+            StartCoroutine(DelayedStart());
+        }
+
+        private IEnumerator DelayedStart()
+        {
+            yield return new WaitForEndOfFrame();
+
             SetInitialReferences();
         }
 
         private void SetInitialReferences()
         {
-            if (mNetworkIdentity.IsControlling())
+            /** CHECK IF OUR CLIENT IS CONNECTED TO NETWORK
+             * > Find our client object.
+             * > Check if our client is connected.
+             * > Establish offline container if disconnected.
+             * */
+            ourClient = GameObject.Find("[ Code - Networking ]").GetComponent<NetworkClient>();
+            ourClientIsConnected = ourClient.clientIsConnected;
+            if (!ourClientIsConnected)
+            {
+                Debug.LogWarning("We are not connected to the server");
+                OfflineContainer = GameObject.Find("[ Offline Spawned Objects ]").GetComponent<Transform>();
+                OfflineSpawnables = ourClient.mServerSpawningScript.getServerSpawnables();
+            }
+
+            //IF we are the current client OR we are NOT connected, then...
+            if (mNetworkIdentity.IsControlling() || !ourClientIsConnected)
             {
                 enableCameras();
             }
 
-            if(mMovementScript == null)
+            //-----------------//
+            //---Script Refs---//
+            //-----------------//
+            if (GetComponent<Player_Movement>() != null)
             {
-                if(GetComponent<Player_Movement>() != null)
-                {
-                    mMovementScript = GetComponent<Player_Movement>();
-                    mMovementScript.SetInitialReferences();
-                }
-                else
-                {
-                    Debug.LogError("Missing essential script");
-                }
+                mMovementScript = GetComponent<Player_Movement>();
+                mMovementScript.SetInitialReferences();
+            }
+            else
+            {
+                Debug.LogError("Missing essential script");
             }
 
-            if(mShootingScript == null)
+            if(GetComponent<Player_Shooting>() != null)
             {
-                if(GetComponent<Player_Shooting>() != null)
-                {
-                    mShootingScript = GetComponent<Player_Shooting>();
-                    mShootingScript.SetInitialReferences();
-                }
-                else
-                {
-                    Debug.LogError("Missing essential script");
-                }
+                mShootingScript = GetComponent<Player_Shooting>();
+                mShootingScript.SetInitialReferences();
+            }
+            else
+            {
+                Debug.LogError("Missing essential script");
             }
 
-            if(mRotationScript == null)
+            if(GetComponent<Player_Rotation>() != null)
             {
-                if(GetComponent<Player_Rotation>() != null)
-                {
-                    mRotationScript = GetComponent<Player_Rotation>();
-                    mRotationScript.SetInitialReferences();
-                }
-                else
-                {
-                    Debug.LogError("Missing essential script");
-                }
+                mRotationScript = GetComponent<Player_Rotation>();
+                mRotationScript.SetInitialReferences();
+            }
+            else
+            {
+                Debug.LogError("Missing essential script");
             }
         }
 
         void Update()
         {
-            if (mNetworkIdentity.IsControlling())
+            if (mNetworkIdentity.IsControlling() || !ourClientIsConnected)
             {
                 checkMovement();
-                //checkAiming();
                 checkShooting();
                 checkRotation();
             }
@@ -95,27 +116,26 @@ namespace Project.Player
 
         private void checkMovement()
         {
-            mMovementScript.runCheck();
+            if(mMovementScript != null)
+            {
+                mMovementScript.runCheck();
+            }
         }
-
-        //private void checkAiming()
-        //{
-        //    Vector3 mousePosition = myCamera.ScreenToWorldPoint(Input.mousePosition);
-        //    Vector3 dif = transform.position - mousePosition;
-        //    dif.Normalize();
-        //    float rot = Mathf.Atan2(dif.x, dif.z) * Mathf.Rad2Deg;
-
-        //    lastRotation = rot;
-        //}
 
         private void checkRotation()
         {
-            mRotationScript.runCheck();
+            if (mRotationScript != null)
+            {
+                mRotationScript.runCheck();
+            }
         }
 
         private void checkShooting()
         {
-            mShootingScript.runCheck();
+            if (mShootingScript != null)
+            {
+                mShootingScript.runCheck();
+            }
         }
 
         private void enableCameras()

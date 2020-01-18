@@ -45,19 +45,31 @@ namespace Project.Networking.Client
             {
                 accessTokenInput = GameObject.Find("AccessKey - Text").GetComponent<TextMeshProUGUI>();
             }
-            else Debug.LogError("Could not find Access Token Input");
+            else
+            {
+                Debug.LogError("Could not find essential component");
+                Destroy(this);
+            }
 
             if (GameObject.Find("userMessage - Text") != null)
             {
                 messageInput = GameObject.Find("userMessage - Text").GetComponent<TextMeshProUGUI>();
             }
-            else Debug.LogError("Could not find userMessage Input");
+            else
+            {
+                Debug.LogError("Could not find essential component");
+                Destroy(this);
+            }
 
             if (GameObject.Find("Global Chat - Text") != null)
             {
                 globalChatDisplay = GameObject.Find("Global Chat - Text").GetComponent<TextMeshProUGUI>();
             }
-            else Debug.LogError("Could not find globalChatDisplay");
+            else
+            {
+                Debug.LogError("Could not find essential component");
+                Destroy(this);
+            }
 
             //UI GameObjects
             if (GameObject.Find("Join Now - Button") != null)
@@ -65,21 +77,33 @@ namespace Project.Networking.Client
                 joinGameUI = GameObject.Find("Join Now - Button");
                 joinGameUI.SetActive(false);
             }
-            else Debug.LogError("Could not find Join Game Button");
+            else
+            {
+                Debug.LogError("Could not find essential component");
+                Destroy(this);
+            }
 
             if (GameObject.Find("Please Wait - Field") != null)
             {
                 pleaseWaitUI = GameObject.Find("Please Wait - Field");
                 pleaseWaitUI.SetActive(false);
             }
-            else Debug.LogError("Could not find Please wait field");
+            else
+            {
+                Debug.LogError("Could not find essential component");
+                Destroy(this);
+            }
 
             if (GameObject.Find("[ Chat ]") != null)
             {
                 globalChatUI = GameObject.Find("[ Chat ]");
                 globalChatUI.SetActive(false);
             }
-            else Debug.LogError("Could not find chat panel");
+            else
+            {
+                Debug.LogError("Could not find essential component");
+                Destroy(this);
+            }
 
         }
 

@@ -30,12 +30,18 @@ namespace Project.Networking.Client
         public void OnOpen(SocketIOEvent pEvent)
         {
             Debug.Log("Connection made to the server");
+            mMaster.clientIsConnected = true;
         }
 
         public void OnRegister(SocketIOEvent pEvent)
         {
             mMaster.setClientID(pEvent.data["id"].ToString().RemoveQuotes());
             Debug.LogFormat("Our Client's ID ({0})", mMaster.getClientID());
+        }
+
+        public void OnOurDisconnect(SocketIOEvent pEvent)
+        {
+            mMaster.clientIsConnected = false;
         }
 
         public void OnSpawn(SocketIOEvent pEvent, NetworkClient ourClient)
@@ -59,7 +65,7 @@ namespace Project.Networking.Client
             mMaster.getServerObjects().Add(id, ni);
         }
 
-        public void OnDisconnected(SocketIOEvent pEvent)
+        public void OnOtherDisconnected(SocketIOEvent pEvent)
         {
             //Extract Data from Event
             string id = pEvent.data["id"].ToString().RemoveQuotes();     //Get our ID from the data passed in.

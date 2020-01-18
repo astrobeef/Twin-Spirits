@@ -116,5 +116,14 @@ namespace Project.Networking.Client
             projectile.Direction = new Vector3(directionX, directionY, directionZ);
             projectile.Speed = speed;
         }
+
+        /*----------------------*/
+        /*---Accessor Methods---*/
+        /*----------------------*/
+
+        public ServerObjects getServerSpawnables()
+        {
+            return serverSpawnables;
+        }
     }
 }

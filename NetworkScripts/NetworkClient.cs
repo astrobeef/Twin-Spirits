@@ -26,14 +26,16 @@ namespace Project.Networking {
         /*-------------*/
         /*---Scirpts---*/
         /*-------------*/
-        private NetworkMessaging mMessagingScript;
-        private NetworkMigration mMigrationScript;
-        private NetworkUpdates mUpdatesScript;
-        private NetworkServerSpawning mServerSpawningScript;
+        public NetworkMessaging mMessagingScript;
+        public NetworkMigration mMigrationScript;
+        public NetworkUpdates mUpdatesScript;
+        public NetworkServerSpawning mServerSpawningScript;
 
         /*---------------*/
         /*---Variables---*/
         /*---------------*/
+
+        public bool clientIsConnected = false;
 
         public const float SERVER_UPDATE_TIME = 10;     //10% of the server update (currently 100 ms)
 
@@ -42,13 +44,9 @@ namespace Project.Networking {
         [SerializeField]
         private Transform networkContainer;                     //The parent transform of our network instantiations. (Spawning a player, bullet, etc.)
 
-
         public static string ClientID { get; private set; }     //The ID of our client.
 
-        
-
         private Dictionary<string, NetworkIdentity> serverObjects;      //The network ID of the objects we have spawned.
-
 
         public AccessToken mAccessToken;                        //The user's access token, to be filled by the uer.
 
@@ -67,7 +65,10 @@ namespace Project.Networking {
         public override void Update()
         {
             base.Update();
-            mMessagingScript.runCheck();
+            if(mMessagingScript != null)
+            {
+                mMessagingScript.runCheck();
+            }
         }
 
         private void SetFrameRate()
@@ -89,6 +90,13 @@ namespace Project.Networking {
                 mMigrationScript.OnOpen(Event);
             });
 
+            //Not to be confused with 'disconnected'.  This runs when OUR client disconnects.
+            On("disconnect", (Event) =>
+            {
+                Debug.Log("We have disconnected from the server");
+                mMigrationScript.OnOurDisconnect(Event);
+            });
+
             //When we have registered, set our client ID from the data passed in.
             On("register", (Event) =>
             {
@@ -101,10 +109,10 @@ namespace Project.Networking {
                 mMigrationScript.OnSpawn(Event, this);
             });
 
-            //When something disconnects from the lobby...
+            //When something, other than ourselves, disconnects from the lobby...
             On("disconnected", (Event) =>
             {
-                mMigrationScript.OnDisconnected(Event);
+                mMigrationScript.OnOtherDisconnected(Event);
             });
 
             //When a position is updated...
@@ -232,6 +240,7 @@ namespace Project.Networking {
         {
             return networkContainer;
         }
+
 
     };
 
