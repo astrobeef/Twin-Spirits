@@ -18,10 +18,19 @@ public class CollisionDestroy : MonoBehaviour
 
             if(ni == null || ni.GetID() != whoActivatedMe.GetActivator())
             {
-                networkIdentity.GetSocket().Emit("collisionDestroy", new JSONObject(JsonUtility.ToJson(new IDData()
+                if(networkIdentity.GetSocket() != null)
                 {
-                    id = networkIdentity.GetID()
-                })));
+                    networkIdentity.GetSocket().Emit("collisionDestroy", new JSONObject(JsonUtility.ToJson(new IDData()
+                    {
+                        id = networkIdentity.GetID()
+                    })));
+                }
+                else
+                {
+                    Debug.LogWarning("Failed to get socket.  We are offline or there is an error");
+                    Debug.LogWarning("We are not damaging anything.  We are just destroying the bullet");
+                    Destroy(gameObject);
+                }
             }
         }
     }

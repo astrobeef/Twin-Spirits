@@ -68,7 +68,6 @@ namespace Project.Networking
         {
             player.tankRotation = transform.localEulerAngles.y.TwoDecimals();
 
-
             networkIdentity.GetSocket().Emit("updateRotation", new JSONObject(JsonUtility.ToJson(player)));
         }
     }

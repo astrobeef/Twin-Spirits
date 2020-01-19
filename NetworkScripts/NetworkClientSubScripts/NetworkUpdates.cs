@@ -50,7 +50,7 @@ namespace Project.Networking.Client
             //Extract Data from Event
             string id = pEvent.data["id"].ToString().RemoveQuotes();
             float tankRotation = pEvent.data["tankRotation"].f;
-            float barrelRotation = pEvent.data["barrelRotation"].f;
+            //float barrelRotation = pEvent.data["barrelRotation"].f;
 
             /** FIND AND UPDATE OBJECT
              * > Using the ID, find the matching <NetworkIdentity> from our 'serverObjects'
