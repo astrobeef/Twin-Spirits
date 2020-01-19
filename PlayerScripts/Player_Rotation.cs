@@ -3,6 +3,7 @@ using System.Collections;
 
 namespace Project.Player
 {
+    [RequireComponent(typeof(PlayerManager))]
     public class Player_Rotation : MonoBehaviour
     {
         //Rotation

@@ -35,6 +35,12 @@ namespace Project.Player
         private Player_Shooting mShootingScript;
         [SerializeField]
         private Player_Rotation mRotationScript;
+        [SerializeField]
+        private Player_Camera mCameraScript;
+
+        //---------------------//
+        //---INITIAL METHODS---//
+        //---------------------//
 
         public void Start()
         {
@@ -102,6 +108,30 @@ namespace Project.Player
             {
                 Debug.LogError("Missing essential script");
             }
+
+            if(GetComponent<Player_Camera>() != null)
+            {
+                mCameraScript = GetComponent<Player_Camera>();
+                mCameraScript.SetInitialReferences();
+            }
+            else
+            {
+                Debug.LogError("Missing essential script");
+            }
+        }
+
+        private void enableCameras()
+        {
+            myCamerasObject = transform.Find("Cameras").gameObject;
+            myCamerasObject.SetActive(true);
+
+            myCamera = myCamerasObject.transform.Find("Render Camera").GetComponent<Camera>();
+
+            if (myCamera.transform.GetComponent<AudioListener>() != null)
+            {
+                myCamera.transform.GetComponent<AudioListener>().enabled = true;
+            }
+
         }
 
         void Update()
@@ -111,8 +141,13 @@ namespace Project.Player
                 checkMovement();
                 checkShooting();
                 checkRotation();
+                checkCamera();
             }
         }
+
+        //-----------------------------//
+        //---CHECK ON UPDATE METHODS---//
+        //-----------------------------//
 
         private void checkMovement()
         {
@@ -138,18 +173,12 @@ namespace Project.Player
             }
         }
 
-        private void enableCameras()
+        public void checkCamera()
         {
-            myCamerasObject = transform.Find("Cameras").gameObject;
-            myCamerasObject.SetActive(true);
-
-            myCamera = myCamerasObject.transform.Find("Render Camera").GetComponent<Camera>();
-
-            if(myCamera.transform.GetComponent<AudioListener>() != null)
+            if(mCameraScript != null)
             {
-                myCamera.transform.GetComponent<AudioListener>().enabled = true;
+                mCameraScript.runCheck();
             }
-
         }
 
         /*--------------------------*/
@@ -164,6 +193,11 @@ namespace Project.Player
         public Player_Rotation getRotationScript()
         {
             return mRotationScript;
+        }
+
+        public Camera getCamera()
+        {
+            return myCamera;
         }
     }
 
