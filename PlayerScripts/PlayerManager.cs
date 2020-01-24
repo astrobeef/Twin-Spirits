@@ -56,6 +56,9 @@ namespace Project.Player
 
         private void SetInitialReferences()
         {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+
             /** CHECK IF OUR CLIENT IS CONNECTED TO NETWORK
              * > Find our client object.
              * > Check if our client is connected.
